@@ -1,59 +1,127 @@
+<!doctype html>
 <html>
- <head>
- </head>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
-<script src="model.js"></script>
+<head>
+    <meta charset="utf-8" />
+    <title>Puck.js → UART.eval → classify + chart</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+    <script src="model.js"></script>
+</head>
 <body>
 <canvas id="myChart" style="width:100%;max-width:700px"></canvas>
-  <script src="https://www.espruino.com/js/uart.js"></script>
-  <script>
-  
-	function extractDataFromResponse(response){
-		if(response != null){
-			//TODO: Extract data from received CSV string
-		}
-	}
+<script src="https://www.espruino.com/js/uart.js"></script>
+<script>
 
-	function doClassification(data){
-		//TODO: Call the classify function from model.js
-	}
+    // Parse "x,y,z,x,y,z,..." -> [Number,...] (length 60 expected)
+    function extractDataFromResponse(response){
+        if (!response || typeof response !== 'string') return null;
+        const raw = response.split(',').map(s => parseInt(s.trim(),10)).filter(v => !Number.isNaN(v));
+        if (raw.length !== 60) return null;
 
-	var chart = null;
-	function makeChart(data) {
+        const LSB_PER_G = 8192; // adjust if your sensor is in different range
+        const scaled = raw.map(v => v / LSB_PER_G);
 
-		//TODO: Plot the accelerometer data 
-		//HINT: You can use Chart.js API (This task is optional)
+        return scaled;
+    }
+    // Map g-values to Int8 in [-127, 127] assuming training range [-gRange, +gRange]
+    function gToInt8(arr, gRange = 2) {
+        const out = new Int8Array(arr.length);
+        const s = 127 / gRange; // scale factor
+        for (let i = 0; i < arr.length; i++) {
+            const g = Math.max(-gRange, Math.min(gRange, arr[i])); // clamp to training range
+            out[i] = Math.max(-127, Math.min(127, Math.round(g * s)));
+        }
+        return out;
+    }
 
-	}
-	
-	function getData() {
-		UART.eval('dumpData()', function(response) {
-			document.getElementById("sensordata").value = response;
-			UART.close();
-			var data = extractDataFromResponse(response);
-			makeChart(data);
-			doClassification(data);
-		});
-	}
-	
-	//This helper function copies the accelerometer data to the clipboard for testing
-	function copy() {
-		var copyText = document.getElementById("sensordata");
-		copyText.select();
-		copyText.setSelectionRange(0, 99999); /* For mobile devices */
-		navigator.clipboard.writeText(copyText.value);
-		alert("Copied the text: " + copyText.value);
-	}
-  
+    // Run the provided JS model (model.js) and show result
+    function doClassification(data){
+        const outEl = document.getElementById('result');
+        if (!data || data.length !== 60) { outEl.textContent = 'No/invalid data'; return; }
+        if (typeof classify !== 'function') { outEl.textContent = 'classify() missing'; return; }
+        try {
+            // data is in g’s from extractDataFromResponse; convert to Int8 range
+            const features = gToInt8(data, /* gRange */ 2); // adjust gRange if your model used a different range
+            const result = classify(features);              // expects [-127..127] x 60
+            outEl.textContent = JSON.stringify(result);
+        } catch (e) {
+            outEl.textContent = 'classification error: ' + (e && e.message ? e.message : e);
+        }
+    }
+
+
+    // Draw/update a simple line chart with 3 datasets (x,y,z)
+    var chart = null;
+    function makeChart(data) {
+        if (!data) return;
+
+        // Split interleaved array into axis arrays of length 20
+        const xs = [], ys = [], zs = [];
+        for (let i = 0; i < 20; i++) {
+            xs.push(data[3*i]);
+            ys.push(data[3*i + 1]);
+            zs.push(data[3*i + 2]);
+        }
+        const labels = Array.from({length: 20}, (_,i) => i+1);
+
+        if (!chart) {
+            const ctx = document.getElementById('myChart');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'x (g)', data: xs, borderColor: 'red',   backgroundColor: 'transparent', pointRadius: 0, lineTension: 0 },
+                        { label: 'y (g)', data: ys, borderColor: 'blue',  backgroundColor: 'transparent', pointRadius: 0, lineTension: 0 },
+                        { label: 'z (g)', data: zs, borderColor: 'green', backgroundColor: 'transparent', pointRadius: 0, lineTension: 0 },
+                    ],
+                },
+                options: {
+                    animation: false,
+                    responsive: true,
+                    scales: {
+                        yAxes: [{ ticks: { suggestedMin: -2, suggestedMax: 2 } }],
+                        xAxes: [{ ticks: { autoSkip: true, maxTicksLimit: 10 } }]
+                    },
+                    legend: { display: true }
+                }
+            });
+        } else {
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = xs;
+            chart.data.datasets[1].data = ys;
+            chart.data.datasets[2].data = zs;
+            chart.update();
+        }
+    }
+
+    function getData() {
+        UART.eval('dumpData()', function(response) {
+            document.getElementById("sensordata").value = response || '';
+            UART.close();
+            const data = extractDataFromResponse(response);
+            makeChart(data);
+            doClassification(data);
+        });
+    }
+
+    //This helper function copies the accelerometer data to the clipboard for testing
+    function copy() {
+        var copyText = document.getElementById("sensordata");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); /* For mobile devices */
+        navigator.clipboard.writeText(copyText.value);
+        alert("Copied the text: " + copyText.value);
+    }
 </script>
-  
-  <div>
-  <button style="margin: 20px;" onclick="getData()">Retrieve and process</button>
-  <input style="margin: 20px; width: 500px" type="text" value=".." id="sensordata">
-  <button onclick="copy()">Copy</button>
-  </div>
-  <div>
-    <label style="margin: 20px; width: 500px" id="result">Classifer output:...</label>
-	</div>
- </body>
+
+<div>
+    <button style="margin: 20px;" onclick="getData()">Retrieve and process</button>
+    <input style="margin: 20px; width: 500px" type="text" value=".." id="sensordata">
+    <button onclick="copy()">Copy</button>
+</div>
+<div>
+    <label style="margin: 20px; width: 500px">Classifier output: </label>
+    <label id="result"></label>
+</div>
+</body>
 </html>

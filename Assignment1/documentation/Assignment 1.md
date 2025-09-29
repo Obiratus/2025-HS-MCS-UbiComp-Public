@@ -17,7 +17,7 @@ we get the following current values for the given actions:
   - CPU ussage cycle: 0.005 s / 1.6 s = 0.003125
   - Thus, the avverage CPU current is:  4000 µA * 0.003125 =  12.5 µA
 
-600 µA + 350 µA + 12.5 µA  = 962.5 µA ≈ 0.963 mA
+Total average current: 600 µA + 350 µA + 12.5 µA  = 962.5 µA ≈ 0.963 mA
 
 The CR2032 has a voltage  3 V.
 
@@ -45,12 +45,12 @@ Convert to Joules: 0.66 Wh * 3600 = 2376 J
 
 Power = 2.5 mW = 0.0025 W  
 Time = 1.6 s  
-Energy per classification = 0.0025 * 1.6 = 0.004 J
+Energy per classification = 0.0025 W * 1.6 S = 0.004 J
 
 **Number of classifications**  
-Number = 2376 J / 0.004 J ≈ 594,000
+Number = 2376 J / 0.004 J ≈ 594'000
 
-A CR2032 can support roughly 594,000 gesture classifications.
+A CR2032 can support roughly 594'000 gesture classifications.
 
 
 
@@ -70,7 +70,10 @@ See [task2_b.js](../src/task2_b.js)
 ### c)
 See [task2_c.js](../src/task2_c.js)
 
-## Tas 3: Off-Board Data Analysis
+## Task 3: Off-Board Data Analysis
+- Webapp: [offboard_version](../offboard_version)
+- Puck.js code: [task3.js](../src/task3.js)
+![img.png](task3.png)#
 
 ## Task 4: Analyze Power Traces
 ### a)
