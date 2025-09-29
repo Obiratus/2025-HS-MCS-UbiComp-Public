@@ -67,7 +67,7 @@ I used the firmware provided in Slack.
 ### b) Program
 See [task2_b.js](../src/task2_b.js)
 
-### c)
+### c) Program with sliding window
 See [task2_c.js](../src/task2_c.js)
 
 ## Task 3: Off-Board Data Analysis
@@ -76,8 +76,58 @@ See [task2_c.js](../src/task2_c.js)
 ![img.png](task3.png)#
 
 ## Task 4: Analyze Power Traces
-### a)
-### b)
-### c)
+See [postprocessing_measurements.ipynb](../postprocessing_measurements.ipynb)
+### a) on-board
+- Average power consumption: 2.633 mW 
+- Energy consumed during task: 4.516 mJ 
+- Average power while active: 11.799 mW 
+- Average execution time: 5.24 ms
+
+### b) off-board
+- Average power consumption: 2.731 mW
+- Energy consumed during task: 56.146 mJ
+- Average power while active: 11.846 mW
+- Average execution time: 62.36 ms
+
+### c) sleep state
+Not done!
 
 ## Task 5: Compare and Contrast
+Comparing results from task 4.
+
+### Similarities
+- Active power during execution is almost identical (~11.8 mW).
+- Average overall power is also very similar (~2.6–2.7 mW) (idle time dominates).
+
+### Differences
+- Execution takes much longer in the off-board case (62 ms vs. 5 ms).
+- Energy per task is ≈12× higher off-board (56 mJ vs. 4.5 mJ), because the task lasts longer.
+
+### Biggest Overhead
+- The BLE connection in the off-board version is the largest overhead.
+- Same power level as on board execution, but much longer execution time → far more energy consumed.
+
+### Estimated Battery Lifetime (CR2032, 220 mAh, 3.0 V)
+
+- Battery energy (Task 1b):  2376 J
+
+| Version    | Avg. Power | Est. Lifetime |
+|------------|------------|----------------|
+| On-board   | 2.633 mW   | ~251 h (~10.5 days) |
+| Off-board  | 2.731 mW   | ~242 h (~10.1 days) |
+
+
+
+### Optimizations
+To maximize battery lifetime, we could reduce UART transmissions by batching data, adjust BLE intervals to limit radio activity, or optimize CPU use to avoid unnecessary wake-ups and therefore keeping the device in low-power states as much as possible  → only send / calculate data, if there was movement.
+
+
+### Conclusions & Trade-offs
+The results show that on-board execution is more energy-efficient than the off-board approach, consuming roughly twelve times less energy per task and finishing execution about twelve times faster. Although the average overall power consumption of both approaches is similar because idle time dominates.
+But if the task frequency would increase, the gap would widen significantly. 
+
+In conclusion, on-board execution scales much better for long-term, battery-powered operation, since it keeps tasks short, reduces communication overhead, and allows the device to return to low-power states more quickly. The off-board approach, while useful for debugging or development, comes with substantial energy and latency costs, making it less suitable for real-world, energy-constrained deployments.
+
+
+## Aids Used
+- ChatGPT - Help with coding
