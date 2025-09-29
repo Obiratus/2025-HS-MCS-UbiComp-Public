@@ -68,6 +68,7 @@ I used the firmware provided in Slack.
 See [task2_b.js](../src/task2_b.js)
 
 ### c)
+See [task2_c.js](../src/task2_c.js)
 
 ## Tas 3: Off-Board Data Analysis
 
